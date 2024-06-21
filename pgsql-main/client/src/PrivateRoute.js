@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
-const PrivateRoute = ({ children, role }) => {
+const PrivateRoute = ({ children, requiredRole }) => {
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
 
@@ -9,11 +9,12 @@ const PrivateRoute = ({ children, role }) => {
     return <Navigate to="/login" />;
   }
 
-  if (role && userRole !== role) {
-    return <Navigate to="/notauthorized" />;
+  // Allow access if no specific role is required or if the user's role matches the required role
+  if (!requiredRole || userRole === requiredRole || (requiredRole === 'user' && userRole === 'admin')) {
+    return children;
   }
 
-  return children;
+  return <Navigate to="/notauthorized" />;
 };
 
 export default PrivateRoute;

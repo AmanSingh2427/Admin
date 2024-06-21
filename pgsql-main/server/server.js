@@ -63,15 +63,11 @@ const checkAdminRole = (req, res, next) => {
   const decoded = jwt.verify(token, 'your_secret_key');
   const userId = decoded.userId;
 
-  console.log('1');
-
   pool.query('SELECT role FROM aman.users WHERE id = $1', [userId])
     .then((result) => {
       if (result.rows.length > 0 && result.rows[0].role === 'admin') {
-        console.log('2');
         next(); // User is admin, proceed to the next middleware/route handler
       } else {
-        console.log('3');
         res.status(403).json({ message: 'Access forbidden: Admins only' });
       }
     })
@@ -83,7 +79,6 @@ const checkAdminRole = (req, res, next) => {
 
 // Example route that is protected by the admin role check middleware
 app.get('/adminhome', checkAdminRole, (req, res) => {
-  console.log('4')
   res.send('Welcome to the Admin Home Page');
 });
 
@@ -108,19 +103,90 @@ app.post('/signup', (req, res) => {
         [username, hashedPassword, email, fullName, imagePath, role] // Added role
       );
 
+      // Send email to the new user
       sendEmail(
         email,
-        'Registration Successful',
+        'Registration is under processing wait for some time to allow the admin to give access to login',
         `Hello ${fullName},\n\nYou have successfully registered with the username: ${username}, image address ${imagePath}, and your role is ${role}.`
       );
 
+      // Send email to the admin for approval
+      const adminEmail = 'thakuraman8630@gmail.com'; // Replace with the admin's email address
+      sendEmail(
+        adminEmail,
+        'New User Registration Approval Needed',
+        `Hello Admin,\n\nA new user has registered with the following details:\n\nUsername: ${username}\nFull Name: ${fullName}\nEmail: ${email}\nRole: ${role}\n\nPlease approve or reject this user.`
+      );
+
       console.log('Registration email sent to:', email);
+      console.log('Approval email sent to admin:', adminEmail);
       res.json(newUser.rows[0]);
     } catch (err) {
       console.error(err.message);
       res.status(500).send('Server error');
     }
   });
+});
+
+// Fetch pending user registrations
+app.get('/pending-registrations', checkAdminRole, async (req, res) => {
+  try {
+    const pendingUsers = await pool.query('SELECT id, username, email, full_name, image, role FROM aman.users WHERE approved = false');
+    res.json(pendingUsers.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// Approve user registration
+app.post('/approve-user', checkAdminRole, async (req, res) => {
+  const { userId } = req.body;
+  try {
+    const user = await pool.query('SELECT email, full_name FROM aman.users WHERE id = $1', [userId]);
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await pool.query('UPDATE aman.users SET approved = true WHERE id = $1', [userId]);
+
+    // Send email to the user about approval
+    sendEmail(
+      user.rows[0].email,
+      'Registration Approved',
+      `Hello ${user.rows[0].full_name},\n\nYour registration has been approved by the admin. You can now log in to your account.`
+    );
+
+    res.json({ message: 'User approved' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// Reject user registration
+app.post('/reject-user', checkAdminRole, async (req, res) => {
+  const { userId } = req.body;
+  try {
+    const user = await pool.query('SELECT email, full_name FROM aman.users WHERE id = $1', [userId]);
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await pool.query('DELETE FROM aman.users WHERE id = $1', [userId]);
+
+    // Send email to the user about rejection
+    sendEmail(
+      user.rows[0].email,
+      'Registration Rejected',
+      `Hello ${user.rows[0].full_name},\n\nYour registration has been rejected by the admin. For further details, please contact support.`
+    );
+
+    res.json({ message: 'User rejected and deleted' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
 });
 
 app.post('/login', async (req, res) => {
@@ -134,6 +200,10 @@ app.post('/login', async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.rows[0].password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    if (!user.rows[0].approved) {
+      return res.status(403).json({ message: 'Your registration has not been approved by the admin yet.' });
     }
 
     const token = jwt.sign({ userId: user.rows[0].id }, 'your_secret_key');
@@ -227,7 +297,6 @@ app.post('/update-profile', (req, res) => {
   });
 });
 
-// Forgot password route
 // Forgot password route
 app.post('/forgot-password', async (req, res) => {
   const { email } = req.body;

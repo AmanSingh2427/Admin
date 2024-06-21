@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Signup from './Signup';
 import Login from './Login';
 import Home from './Home';
@@ -11,24 +11,31 @@ import ResetPassword from './ResetPassword';
 import AdminHome from './AdminHome';
 import NotAuthorized from './NotAuthorized'; // Import the NotAuthorized component
 
-function App() {
+const App = () => {
+  const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('role');
+
   return (
     <Router>
       <div className="App">
         <Routes>
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/home" element={<PrivateRoute role="user"><Home /></PrivateRoute>} />
-          <Route path="/adminhome" element={<PrivateRoute role="admin"><AdminHome /></PrivateRoute>} />
+          <Route path="/signup" element={!token ? <Signup /> : <Navigate to={userRole === 'admin' ? '/adminhome' : '/home'} />} />
+          <Route path="/login" element={!token ? <Login /> : <Navigate to={userRole === 'admin' ? '/adminhome' : '/home'} />} />
+          <Route path="/reset-password" element={!token ? <ResetPassword /> : <Navigate to={userRole === 'admin' ? '/adminhome' : '/home'} />} />
+
+          <Route path="/home" element={<PrivateRoute requiredRole="user"><Home /></PrivateRoute>} />
+          <Route path="/adminhome" element={<PrivateRoute requiredRole="admin"><AdminHome /></PrivateRoute>} />
           <Route path="/about" element={<PrivateRoute><About /></PrivateRoute>} />
           <Route path="/contact" element={<PrivateRoute><Contact /></PrivateRoute>} />
           <Route path="/update-profile" element={<PrivateRoute><UpdateProfile /></PrivateRoute>} />
           <Route path="/notauthorized" element={<NotAuthorized />} /> {/* Add the NotAuthorized route */}
+
+          
+          <Route path="/" element={<Navigate to={token ? (userRole === 'admin' ? '/adminhome' : '/home') : '/login'} />} /> {/* Default route */}
         </Routes>
       </div>
     </Router>
   );
-}
+};
 
 export default App;
