@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
 const UpdateProduct = () => {
   const { productId } = useParams(); // Get productId from route params
   const navigate = useNavigate();
-  const [product, setProduct] = useState({
+  const location = useLocation();
+  const [product, setProduct] = useState(location.state?.product || {
     id: '',
     name: '',
     price: '',
@@ -14,20 +15,22 @@ const UpdateProduct = () => {
   });
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const response = await axios.get(`http://localhost:5000/products/${productId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        setProduct(response.data);
-      } catch (err) {
-        console.error('Error fetching product:', err);
-      }
-    };
-    fetchProduct();
-  }, [productId]);
+    if (!location.state?.product) {
+      const fetchProduct = async () => {
+        try {
+          const response = await axios.get(`http://localhost:5000/products/${productId}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          setProduct(response.data);
+        } catch (err) {
+          console.error('Error fetching product:', err);
+        }
+      };
+      fetchProduct();
+    }
+  }, [productId, location.state]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

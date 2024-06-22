@@ -22,9 +22,19 @@ const ProductsTable = () => {
     fetchProducts();
   }, []);
 
-//   const handleUpdate = (id) => {
-//     navigate(`/update/${id}`);
-//   };
+  const handleUpdate = async (id) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/products/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const product = response.data;
+      navigate(`/update/${id}`, { state: { product } });
+    } catch (err) {
+      console.error('Error fetching product:', err);
+    }
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -70,7 +80,7 @@ const ProductsTable = () => {
               </td>
               <td className="py-2 px-4 border-b">
                 <button
-                //   onClick={() => handleUpdate(product.id)}
+                  onClick={() => handleUpdate(product.id)}
                   className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
                 >
                   Update

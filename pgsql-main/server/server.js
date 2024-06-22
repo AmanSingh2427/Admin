@@ -446,6 +446,18 @@ app.put('/products/:id', async (req, res) => {
   }
 });
 
+// Delete a product by ID
+app.delete('/products/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM aman.products WHERE id = $1', [id]);
+    res.status(200).send('Product deleted successfully!');
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
 
 app.get('/', (req, res) => {
   console.log('Home page');
