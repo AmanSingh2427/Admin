@@ -384,7 +384,67 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
+const uploads = multer({ storage: storage });
 
+//create new product by admin
+app.post('/create-product', uploads.single('photo'), async (req, res) => {
+  const { name, price, description } = req.body;
+  const photo = req.file ? req.file.filename : null;
+
+  try {
+    const newProduct = await pool.query(
+      'INSERT INTO aman.products (name, price, photo, description) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, price, photo, description]
+    );
+    res.json(newProduct.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+app.get('/products', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM aman.products');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+// Fetch a product by ID
+app.get('/products/:id', async (req, res) => {
+  const productId = req.params.id;
+  try {
+    const query = 'SELECT * FROM aman.products WHERE id = $1';
+    const { rows } = await pool.query(query, [productId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching product:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update a product by ID
+app.put('/products/:id', async (req, res) => {
+  const productId = req.params.id;
+  const { name, price, description, photo } = req.body;
+  try {
+    const query = 'UPDATE aman.products SET name = $1, price = $2, description = $3, photo = $4 WHERE id = $5 RETURNING *';
+    const { rows } = await pool.query(query, [name, price, description, photo, productId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error updating product:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 
 app.get('/', (req, res) => {

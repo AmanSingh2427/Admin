@@ -39,6 +39,7 @@ const Navbar = ({ toggleTableDisplay }) => {
           <Link to="/home" className="text-white">Home</Link>
           <Link to="/about" className="text-white">About</Link>
           <Link to="/contact" className="text-white">Contact</Link>
+          <Link to="/products" className="text-white">Our Products</Link>
         </div>
         <div className="flex space-x-4 items-center">
           {username ? (
@@ -50,7 +51,6 @@ const Navbar = ({ toggleTableDisplay }) => {
                 className="w-8 h-8 rounded-full"
               />
               <span className="text-white">{username}</span>
-        
               <div className="relative">
                 <button
                   onClick={() => {
